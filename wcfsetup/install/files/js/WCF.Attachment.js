@@ -308,71 +308,77 @@ if (COMPILER_TARGET_DEFAULT) {
 			// remove failed uploads
 			this._fileListSelector.children('li.uploadFailed').remove();
 			
-			var promises = [];
-			
 			var maxSize = this._buttonSelector.data('maxSize');
 			// TODO: Use ACP options
 			var maxWidth = 1024;
 			var maxHeight = 576;
 			
-			// Create an ImageResizer instance
-			var resizer = new WCF.ImageResizer();
-			resizer.setMaxWidth(maxWidth);
-			resizer.setMaxHeight(maxHeight);
-			
-			for (var i = 0; i < files.length; i++) {
-				if (files[i].type.match(/^image\//i)) {
-					promises.push(new Promise(function (resolve) {
-						(function (i) {
-							var file = files[i];
-							
-							if (file.blob) {
-								var name = file.name;
-								file = file.blob;
-								file.name = name;
-							}
-							
-							var reader = new FileReader();
-							var image = new Image();
-							var needsResize = file.size > maxSize;
-
-							reader.onloadend = function () {
-								image.src = reader.result;
-							};
-							
-							image.onload = function () {
-								needsResize = needsResize || image.width > maxWidth || image.height > maxHeight;
-								
-								if (!needsResize) {
-									resolve(file);
-								}
-								else {
-									resizer.resize(image, file.name)
-										.then(resolve)
-										.catch(function (error) {
-											// In case of an error return the original file
-											console.debug('[WCF.Attachment] Failed to resize', error);
+			var promise = new Promise((function (resolve) {
+				require(['ImageResizer'], (function (ImageResizer) {
+					var promises = [];
+					
+					// Create an ImageResizer instance
+					var resizer = new ImageResizer();
+					resizer.setMaxWidth(maxWidth);
+					resizer.setMaxHeight(maxHeight);
+					
+					for (var i = 0; i < files.length; i++) {
+						if (files[i].type.match(/^image\//i)) {
+							(function (i) {
+								promises.push(new Promise(function (resolve) {
+									var file = files[i];
+									
+									if (file.blob) {
+										var name = file.name;
+										file = file.blob;
+										file.name = name;
+									}
+									
+									var reader = new FileReader();
+									var image = new Image();
+									var needsResize = file.size > maxSize;
+									
+									reader.onloadend = function () {
+										image.src = reader.result;
+									};
+									
+									image.onload = function () {
+										needsResize = needsResize || image.width > maxWidth || image.height > maxHeight;
+										
+										if (!needsResize) {
 											resolve(file);
-										});
-								}
-								
-							};
-							
-							image.onerror = function (event) {
-								console.debug('[WCF.Attachment] Failed to create image object. Your browser probably does not support the image type ('+file.type+').');
-								resolve(file);
-							};
-							
-							reader.readAsDataURL(file);
-						})(i);
-					}));
-				}
-				else {
-					promises.push(Promise.resolve(files[i]));
-				}
-			}
+										}
+										else {
+											resizer.resize(image, file.name)
+												.then(resolve)
+												.catch(function (error) {
+													// In case of an error return the original file
+													console.debug('[WCF.Attachment] Failed to resize', error);
+													resolve(file);
+												});
+										}
+										
+									};
+									
+									image.onerror = function (event) {
+										console.debug('[WCF.Attachment] Failed to create image object. Your browser probably does not support the image type ('+file.type+').');
+										resolve(file);
+									};
+									
+									reader.readAsDataURL(file);
+								}));
+							})(i);
+						}
+						else {
+							promises.push(Promise.resolve(files[i]));
+						}
+					}
+					
+					resolve(Promise.all(promises));
+				}).bind(this));
+			}).bind(this));
 			
-			return this._super(Promise.all(promises));
+			return this._super(promise);
 		},
 		
 		/**

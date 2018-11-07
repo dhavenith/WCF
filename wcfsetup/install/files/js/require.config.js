@@ -27,6 +27,7 @@ requirejs.config({
 			'Environment': 'WoltLabSuite/Core/Environment',
 			'EventHandler': 'WoltLabSuite/Core/Event/Handler',
 			'EventKey': 'WoltLabSuite/Core/Event/Key',
+			'ImageResizer': 'WoltLabSuite/Core/ImageResizer',
 			'Language': 'WoltLabSuite/Core/Language',
 			'List': 'WoltLabSuite/Core/List',
 			'ObjectMap': 'WoltLabSuite/Core/ObjectMap',
