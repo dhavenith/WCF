@@ -318,9 +318,9 @@ if (COMPILER_TARGET_DEFAULT) {
 					var promises = [];
 					
 					// Create an ImageResizer instance
-					var resizer = new ImageResizer();
-					resizer.setMaxWidth(maxWidth);
-					resizer.setMaxHeight(maxHeight);
+					var resizer = new ImageResizer()
+						.setMaxWidth(maxWidth)
+						.setMaxHeight(maxHeight);
 					
 					for (var i = 0; i < files.length; i++) {
 						if (files[i].type.match(/^image\//i)) {
@@ -349,7 +349,10 @@ if (COMPILER_TARGET_DEFAULT) {
 											resolve(file);
 										}
 										else {
-											resizer.resize(image, file.name)
+											resizer.resize(image)
+												.then(function () {
+													return resizer.getFile(file.name)
+												})
 												.then(resolve)
 												.catch(function (error) {
 													// In case of an error return the original file
