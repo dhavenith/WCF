@@ -336,24 +336,12 @@ if (COMPILER_TARGET_DEFAULT) {
 							var image = new Image();
 							var needsResize = file.size > maxSize;
 
-							if (needsResize) {
-								console.debug('File exceeds size limits, resizing image.')
-							}
-							
 							reader.onloadend = function () {
 								image.src = reader.result;
 							};
 							
 							image.onload = function () {
-								console.log(image)
-								console.log(image.width)
-								console.log(image.height)
-								
 								needsResize = needsResize || image.width > maxWidth || image.height > maxHeight;
-								
-								if (image.width > maxWidth || image.height > maxHeight) {
-									console.debug('Resizing because image dimensions exceed the limit of '+maxWidth+'x'+maxHeight);
-								}
 								
 								if (!needsResize) {
 									resolve(file);
@@ -363,7 +351,7 @@ if (COMPILER_TARGET_DEFAULT) {
 										.then(resolve)
 										.catch(function (error) {
 											// In case of an error return the original file
-											console.debug('Failed to resize', error);
+											console.debug('[WCF.Attachment] Failed to resize', error);
 											resolve(file);
 										});
 								}
@@ -371,8 +359,7 @@ if (COMPILER_TARGET_DEFAULT) {
 							};
 							
 							image.onerror = function (event) {
-								// TODO: Language variable?
-								console.debug('Failed to create image object. Your browser probably does not support the image type ('+file.type+').');
+								console.debug('[WCF.Attachment] Failed to create image object. Your browser probably does not support the image type ('+file.type+').');
 								resolve(file);
 							};
 							
