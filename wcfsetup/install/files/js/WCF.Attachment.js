@@ -308,7 +308,84 @@ if (COMPILER_TARGET_DEFAULT) {
 			// remove failed uploads
 			this._fileListSelector.children('li.uploadFailed').remove();
 			
-			return this._super(files);
+			var promises = [];
+			
+			var maxSize = this._buttonSelector.data('maxSize');
+			// TODO: Use ACP options
+			var maxWidth = 1024;
+			var maxHeight = 576;
+			
+			// Create an ImageResizer instance
+			var resizer = new WCF.ImageResizer();
+			resizer.setMaxWidth(maxWidth);
+			resizer.setMaxHeight(maxHeight);
+			
+			for (var i = 0; i < files.length; i++) {
+				if (files[i].type.match(/^image\//i)) {
+					promises.push(new Promise(function (resolve) {
+						(function (i) {
+							var file = files[i];
+							
+							if (file.blob) {
+								var name = file.name;
+								file = file.blob;
+								file.name = name;
+							}
+							
+							var reader = new FileReader();
+							var image = new Image();
+							var needsResize = file.size > maxSize;
+
+							if (needsResize) {
+								console.debug('File exceeds size limits, resizing image.')
+							}
+							
+							reader.onloadend = function () {
+								image.src = reader.result;
+							};
+							
+							image.onload = function () {
+								console.log(image)
+								console.log(image.width)
+								console.log(image.height)
+								
+								needsResize = needsResize || image.width > maxWidth || image.height > maxHeight;
+								
+								if (image.width > maxWidth || image.height > maxHeight) {
+									console.debug('Resizing because image dimensions exceed the limit of '+maxWidth+'x'+maxHeight);
+								}
+								
+								if (!needsResize) {
+									resolve(file);
+								}
+								else {
+									resizer.resize(image, file.name)
+										.then(resolve)
+										.catch(function (error) {
+											// In case of an error return the original file
+											console.debug('Failed to resize', error);
+											resolve(file);
+										});
+								}
+								
+							};
+							
+							image.onerror = function (event) {
+								// TODO: Language variable?
+								console.debug('Failed to create image object. Your browser probably does not support the image type ('+file.type+').');
+								resolve(file);
+							};
+							
+							reader.readAsDataURL(file);
+						})(i);
+					}));
+				}
+				else {
+					promises.push(Promise.resolve(files[i]));
+				}
+			}
+			
+			return this._super(Promise.all(promises));
 		},
 		
 		/**

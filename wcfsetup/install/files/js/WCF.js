@@ -5972,8 +5972,10 @@ if (COMPILER_TARGET_DEFAULT) {
 		 * @return        integer
 		 */
 		_upload: function (event, file, blob) {
+			var self = this;
 			var $uploadID = null;
 			var $files = [];
+			
 			if (file) {
 				$files.push(file);
 			}
@@ -5994,7 +5996,9 @@ if (COMPILER_TARGET_DEFAULT) {
 				}
 				
 				$files.push({
-					name: 'pasted-from-clipboard' + $ext
+					name: 'pasted-from-clipboard' + $ext,
+					type: blob.type,
+					blob: blob
 				});
 			}
 			else {
@@ -6005,56 +6009,69 @@ if (COMPILER_TARGET_DEFAULT) {
 				var $fd = new FormData();
 				$uploadID = this._createUploadMatrix($files);
 				
-				// no more files left, abort
-				if (!this._uploadMatrix[$uploadID].length) {
-					return null;
-				}
-				
-				for (var $i = 0, $length = $files.length; $i < $length; $i++) {
-					if (this._uploadMatrix[$uploadID][$i]) {
-						var $internalFileID = this._uploadMatrix[$uploadID][$i].data('internalFileID');
-						
-						if (blob) {
-							$fd.append('__files[' + $internalFileID + ']', blob, $files[$i].name);
-						}
-						else {
-							$fd.append('__files[' + $internalFileID + ']', $files[$i]);
+				var doUpload = function ($uploadID, files, ignoreBlob) {
+					// no more files left, abort
+					if (!self._uploadMatrix[$uploadID].length) {
+						return null;
+					}
+					
+					for (var $i = 0, $length = files.length; $i < $length; $i++) {
+						if (self._uploadMatrix[$uploadID][$i]) {
+							var $li = self._uploadMatrix[$uploadID][$i];;
+							var $file = files[$i];
+							var $internalFileID = $li.data('internalFileID');
+							
+							if (blob && !ignoreBlob) {
+								$fd.append('__files[' + $internalFileID + ']', blob, $file.name);
+							}
+							else {
+								$fd.append('__files[' + $internalFileID + ']', $file);
+							}
 						}
 					}
-				}
-				
-				$fd.append('actionName', this._options.action);
-				$fd.append('className', this._className);
-				var $additionalParameters = this._getParameters();
-				for (var $name in $additionalParameters) {
-					$fd.append('parameters[' + $name + ']', $additionalParameters[$name]);
-				}
-				
-				var self = this;
-				$.ajax({
-					type: 'POST',
-					url: this._options.url,
-					enctype: 'multipart/form-data',
-					data: $fd,
-					contentType: false,
-					processData: false,
-					success: function (data, textStatus, jqXHR) {
-						self._success($uploadID, data);
-					},
-					error: $.proxy(this._error, this),
-					xhr: function () {
-						var $xhr = $.ajaxSettings.xhr();
-						if ($xhr) {
-							$xhr.upload.addEventListener('progress', function (event) {
-								self._progress($uploadID, event);
-							}, false);
-						}
-						return $xhr;
-					},
-					xhrFields: {
-						withCredentials: true
+					
+					$fd.append('actionName', self._options.action);
+					$fd.append('className', self._className);
+					var $additionalParameters = self._getParameters();
+					for (var $name in $additionalParameters) {
+						$fd.append('parameters[' + $name + ']', $additionalParameters[$name]);
 					}
-				});
+					
+					$.ajax({
+						type: 'POST',
+						url: self._options.url,
+						enctype: 'multipart/form-data',
+						data: $fd,
+						contentType: false,
+						processData: false,
+						success: function (data, textStatus, jqXHR) {
+							self._success($uploadID, data);
+						},
+						error: $.proxy(self._error, self),
+						xhr: function () {
+							var $xhr = $.ajaxSettings.xhr();
+							if ($xhr) {
+								$xhr.upload.addEventListener('progress', function (event) {
+									self._progress($uploadID, event);
+								}, false);
+							}
+							return $xhr;
+						},
+						xhrFields: {
+							withCredentials: true
+						}
+					});
+				};
+				
+				if ($uploadID instanceof Promise) {
+					// if a Promise was given, the file set may have been updated
+					$uploadID.then(function (data) {
+						doUpload(data.uploadID, data.files, true);
+					});
+				}
+				else {
+					doUpload($uploadID, $files);
+				}
 			}
 			
 			return $uploadID;
@@ -6067,24 +6084,40 @@ if (COMPILER_TARGET_DEFAULT) {
 		 * @return        integer
 		 */
 		_createUploadMatrix: function (files) {
-			if (files.length) {
-				var $uploadID = this._uploadMatrix.length;
-				this._uploadMatrix[$uploadID] = [];
-				
-				for (var $i = 0, $length = files.length; $i < $length; $i++) {
-					var $file = files[$i];
-					var $li = this._initFile($file);
+			var self = this;
+			
+			var updateMatrix = function (files) {
+				if (files.length) {
+					var $uploadID = self._uploadMatrix.length;
+					self._uploadMatrix[$uploadID] = [];
 					
-					if (!$li.hasClass('uploadFailed')) {
-						$li.data('filename', $file.name).data('internalFileID', this._internalFileID++);
-						this._uploadMatrix[$uploadID][$i] = $li;
+					for (var $i = 0, $length = files.length; $i < $length; $i++) {
+						var $file = files[$i];
+						var $li = self._initFile($file);
+						
+						if (!$li.hasClass('uploadFailed')) {
+							$li.data('filename', $file.name).data('internalFileID', self._internalFileID++);
+							self._uploadMatrix[$uploadID][$i] = $li;
+						}
 					}
+					
+					return $uploadID;
 				}
 				
-				return $uploadID;
+				return null;
+				
 			}
 			
-			return null;
+			if (files instanceof Promise) {
+				return files.then(function (files) {
+					return {
+						files: files,
+						uploadID: updateMatrix(files)
+					};
+				});
+			}
+			
+			return updateMatrix(files);
 		},
 		
 		/**
@@ -7908,3 +7941,108 @@ WCF.Notice = { };
 function wcfEval(expression) {
 	return eval(expression);
 }
+
+/**
+ * TODO: Documentation
+ * TODO: Default options / method to set options
+ **/
+WCF.ImageResizer = Class.extend({
+	maxWidth: 800,
+	maxHeight: 600,
+	maxFileSize: null,
+	quality: 0.7,
+	fileType: 'image/jpeg',
+	
+	init: function () {
+		this.canvas = document.createElement('canvas');
+		this.ctx = this.canvas.getContext('2d');
+	},
+	
+	setMaxWidth: function (value) {
+		this.maxWidth = value;
+		return this;
+	},
+	
+	setMaxHeight: function (value) {
+		this.maxHeight = value;
+		return this;
+	},
+	
+	setQuality: function (value) {
+		this.quality = value;
+		return this;
+	},
+	
+	setFileType: function (value) {
+		this.fileType = value;
+		return this;
+	},
+	
+	blobToFile: function (blob, name) {
+		var ext = '';
+		switch (blob.type) {
+			case 'image/png':
+				ext = '.png';
+				break;
+			
+			case 'image/jpeg':
+				ext = '.jpg';
+				break;
+			
+			case 'image/gif':
+				ext = '.gif';
+				break;
+			
+			default:
+				ext = blob.type.split('/')[1];
+		}
+		
+		return new File([ blob ], name.split(/(.+)(\..+?)$/)[1] + "_autoscaled" + ext);
+	},
+	
+	resize: function (image, fileName) {
+		var self = this;
+		var fileType = this.fileType ? this.fileType : file.type;
+		
+		// TODO: If possible, resize the image in a WebWorker, otherwise the UI thread may be blocked for larger images
+		return new Promise(function (resolve, reject) {
+			// Keep image ratio
+			if (image.width >= image.height) {
+				self.canvas.width = self.maxWidth;
+				self.canvas.height = self.maxWidth * (image.height / image.width);
+			}
+			else {
+				self.canvas.width = self.maxHeight * (image.width / image.height);
+				self.canvas.height = self.maxHeight;
+			}
+			
+			// Scale the image down
+			// TODO: Evaluate if a custom downsampling algorithm like Hermite downsampling should be implemented
+			self.ctx.drawImage(image, 0, 0, self.canvas.width, self.canvas.height);
+			
+			// Create a new image blob
+			try {
+				if (HTMLCanvasElement.prototype.toBlob) {
+					self.canvas.toBlob(function (blob) {
+						resolve(self.blobToFile(blob, fileName));
+					}, fileType, self.quality);
+				}
+				else {
+					// Fallback for browsers like Edge that do not implement toBlob()
+					var binary = atob(self.canvas.toDataURL(file.type, self.quality).split(',')[1]);
+					var length = binary.length;
+					var data = new Uint8Array(length);
+					
+					for (var i = 0; i < length; i++) {
+						data[i] = binary.charCodeAt(i);
+					}
+					
+					resolve(self.blobToFile(new Blob([ data ], { type: fileType }), fileName));
+				}
+			}
+			catch (error) {
+				reject(error);
+			}
+		});
+	}
+});
