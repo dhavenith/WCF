@@ -18,7 +18,6 @@ define([], function() {
 	ImageResizer.prototype = {
 		maxWidth: 800,
 		maxHeight: 600,
-		maxFileSize: null,
 		quality: 0.8,
 		fileType: 'image/jpeg',
 

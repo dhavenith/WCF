@@ -1061,10 +1061,11 @@ image/jpeg:attachment_image_autoscale_quality</enableoptions>
 			</option>
 			<option name="attachment_image_autoscale_quality">
 				<categoryname>message.attachment.autoscale</categoryname>
-				<optiontype>float</optiontype>
-				<defaultvalue>0.8</defaultvalue>
-				<minvalue>0</minvalue>
-				<maxvalue>1</maxvalue>
+				<optiontype>integer</optiontype>
+				<defaultvalue>80</defaultvalue>
+				<minvalue>1</minvalue>
+				<maxvalue>100</maxvalue>
+				<suffix>percent</suffix>
 			</option>
 
 			<!-- message.general.edit -->

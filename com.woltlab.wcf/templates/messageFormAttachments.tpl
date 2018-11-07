@@ -69,7 +69,7 @@
 				autoScaleMaxWidth: {ATTACHMENT_IMAGE_AUTOSCALE_MAX_WIDTH},
 				autoScaleMaxHeight: {ATTACHMENT_IMAGE_AUTOSCALE_MAX_HEIGHT},
 				autoScaleFileType: '{ATTACHMENT_IMAGE_AUTOSCALE_FILE_TYPE}',
-				autoScaleQuality: {ATTACHMENT_IMAGE_AUTOSCALE_QUALITY}
+				autoScaleQuality: {ATTACHMENT_IMAGE_AUTOSCALE_QUALITY / 100}
 			{rdelim}
 		);
 		new WCF.Action.Delete('wcf\\data\\attachment\\AttachmentAction', '.formAttachmentList > li');
