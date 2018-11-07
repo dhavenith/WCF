@@ -222,6 +222,9 @@
 					<parent>message</parent>
 					<options>module_attachment</options>
 				</category>
+					<category name="message.attachment.autoscale">
+						<parent>message.attachment</parent>
+					</category>
 				
 				<category name="message.sidebar">
 					<parent>message</parent>
@@ -1029,7 +1032,41 @@ redis:cache_source_redis_host,!cache_source_memcached_host</enableoptions>
 				<minvalue>96</minvalue>
 				<suffix>pixel</suffix>
 			</option>
-			
+			<option name="attachment_image_autoscale">
+				<categoryname>message.attachment.autoscale</categoryname>
+				<optiontype>boolean</optiontype>
+				<defaultvalue>1</defaultvalue>
+				<enableoptions>attachment_image_autoscale_max_width,attachment_image_autoscale_max_height,attachment_image_autoscale_file_type,attachment_image_autoscale_quality</enableoptions>
+			</option>
+			<option name="attachment_image_autoscale_max_width">
+				<categoryname>message.attachment.autoscale</categoryname>
+				<optiontype>integer</optiontype>
+				<defaultvalue>1024</defaultvalue>
+				<minvalue>1</minvalue>
+			</option>
+			<option name="attachment_image_autoscale_max_height">
+				<categoryname>message.attachment.autoscale</categoryname>
+				<optiontype>integer</optiontype>
+				<defaultvalue>576</defaultvalue>
+				<minvalue>1</minvalue>
+			</option>
+			<option name="attachment_image_autoscale_file_type">
+				<categoryname>message.attachment.autoscale</categoryname>
+				<optiontype>radioButton</optiontype>
+				<defaultvalue>image/jpeg</defaultvalue>
+				<selectoptions>image/jpeg:wcf.acp.option.attachment_image_autoscale_file_type.jpeg
+image/png:wcf.acp.option.attachment_image_autoscale_file_type.png</selectoptions>
+				<enableoptions>image/png:!attachment_image_autoscale_quality
+image/jpeg:attachment_image_autoscale_quality</enableoptions>
+			</option>
+			<option name="attachment_image_autoscale_quality">
+				<categoryname>message.attachment.autoscale</categoryname>
+				<optiontype>float</optiontype>
+				<defaultvalue>0.8</defaultvalue>
+				<minvalue>0</minvalue>
+				<maxvalue>1</maxvalue>
+			</option>
+
 			<!-- message.general.edit -->
 			<option name="module_edit_history">
 				<categoryname>message.general.edit</categoryname>

@@ -23,21 +23,29 @@ define([], function() {
 		fileType: 'image/jpeg',
 
 		setMaxWidth: function (value) {
+			if (value == null) value = ImageResizer.prototype.maxWidth;
+			
 			this.maxWidth = value;
 			return this;
 		},
 		
 		setMaxHeight: function (value) {
+			if (value == null) value = ImageResizer.prototype.maxHeight;
+			
 			this.maxHeight = value;
 			return this;
 		},
 		
 		setQuality: function (value) {
+			if (value == null) value = ImageResizer.prototype.quality;
+			
 			this.quality = value;
 			return this;
 		},
 		
 		setFileType: function (value) {
+			if (value == null) value = ImageResizer.prototype.fileType;
+			
 			this.fileType = value;
 			return this;
 		},
