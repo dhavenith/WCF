@@ -172,6 +172,8 @@ if (COMPILER_TARGET_DEFAULT) {
 			// show tab
 			this._fileListSelector.closest('.messageTabMenu').messageTabMenu('showTab', 'attachments', true);
 			
+			// TODO: $uploadID might be a Promise
+			
 			if (data.file) {
 				$uploadID = this._upload(undefined, data.file);
 			}
@@ -315,84 +317,96 @@ if (COMPILER_TARGET_DEFAULT) {
 			// remove failed uploads
 			this._fileListSelector.children('li.uploadFailed').remove();
 			
-			if (this._options.enableAutoScale) {
-				var self = this;
+			if (this._options.autoScale && this._options.autoScale.enable) {
 				var maxSize = this._buttonSelector.data('maxSize');
 				
-				var promise = new Promise(function (resolve) {
-					require(['ImageResizer'], function (ImageResizer) {
+				var promise = require(['ImageResizer'])
+					.then((function (modules) {
+						var ImageResizer = modules[0];
+						
 						var promises = [];
 						
 						// Create an ImageResizer instance
 						var resizer = new ImageResizer()
-							.setMaxWidth(self._options.autoScaleMaxWidth)
-							.setMaxHeight(self._options.autoScaleMaxHeight)
-							.setFileType(self._options.autoScaleFileType)
-							.setQuality(self._options.autoScaleQuality);
+							.setMaxWidth(this._options.autoScale.maxWidth)
+							.setMaxHeight(this._options.autoScale.maxHeight)
+							.setQuality(this._options.autoScale.quality);
+						
+						if (this._options.autoScale.fileType !== 'keep') {
+							resizer.setFileType(this._options.autoScale.fileType);
+						}
 						
 						for (var i = 0; i < files.length; i++) {
 							if (files[i].type.match(/^image\//i)) {
-								(function (i) {
-									promises.push(new Promise(function (resolve) {
-										var file = files[i];
+								promises.push(new Promise((function (resolve) {
+									var file = files[i];
+									
+									if (file.blob) {
+										var name = file.name;
+										file = file.blob;
+										file.name = name;
+									}
+									
+									var reader = new FileReader();
+									var image = new Image();
+									var needsResize = file.size > maxSize;
+									
+									reader.onloadend = function () {
+										image.src = reader.result;
+									};
+									
+									image.onload = (function () {
+										needsResize = needsResize
+											|| image.width > this._options.autoScale.maxWidth
+											|| image.height > this._options.autoScale.maxHeight;
 										
-										if (file.blob) {
-											var name = file.name;
-											file = file.blob;
-											file.name = name;
-										}
-										
-										var reader = new FileReader();
-										var image = new Image();
-										var needsResize = file.size > maxSize;
-										
-										reader.onloadend = function () {
-											image.src = reader.result;
-										};
-										
-										image.onload = function () {
-											needsResize = needsResize
-												    || image.width > self._options.autoScaleMaxWidth
-												    || image.height > self._options.autoScaleMaxHeight;
-											
-											if (!needsResize) {
-												resolve(file);
-											}
-											else {
-												resizer.resize(image)
-													.then(function () {
-														return resizer.getFile(file.name)
-													})
-													.then(resolve)
-													.catch(function (error) {
-														// In case of an error return the original file
-														console.debug('[WCF.Attachment] Failed to resize', error);
-														resolve(file);
-													});
-											}
-											
-										};
-										
-										image.onerror = function (event) {
-											console.debug('[WCF.Attachment] Failed to create image object. Your browser probably does not support the image type ('+file.type+').');
+										if (!needsResize) {
 											resolve(file);
-										};
-										
-										reader.readAsDataURL(file);
-									}));
-								})(i);
+										}
+										else {
+											resizer.resize(image)
+												.then((function (canvas) {
+													var fileType = undefined;
+													
+													if (this._options.autoScale.fileType === 'keep') {
+														fileType = file.type;
+													}
+													
+													return resizer.getFile(canvas, file.name, fileType);
+												}).bind(this))
+												.catch(function (error) {
+													// In case of an error return the original file
+													console.debug('[WCF.Attachment] Failed to resize', error);
+													return file;
+												})
+												.then(resolve);
+										}
+									}).bind(this);
+									
+									image.onerror = function (event) {
+										console.debug('[WCF.Attachment] Failed to create image object. Your browser probably does not support the image type ('+file.type+').');
+										resolve(file);
+									};
+									
+									reader.readAsDataURL(file);
+								}).bind(this)));
 							}
 							else {
 								promises.push(Promise.resolve(files[i]));
 							}
 						}
 						
-						resolve(Promise.all(promises));
+						return Promise.all(promises);
+					}).bind(this))
+					.catch(function (error) {
+						console.debug('[WCF.Attachment] Error while loading ImageResizer: '+error);
+						
+						// In case of a failure to load the required modules, return the untouched list of files
+						return files;
 					});
-				});
 				
 				return this._super(promise);
-			}
+			};
 			
 			return this._super(files);
 		},

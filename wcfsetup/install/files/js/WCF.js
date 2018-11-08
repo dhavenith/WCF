@@ -6084,20 +6084,18 @@ if (COMPILER_TARGET_DEFAULT) {
 		 * @return        integer
 		 */
 		_createUploadMatrix: function (files) {
-			var self = this;
-			
-			var updateMatrix = function (files) {
+			var updateMatrix = (function (files) {
 				if (files.length) {
-					var $uploadID = self._uploadMatrix.length;
-					self._uploadMatrix[$uploadID] = [];
+					var $uploadID = this._uploadMatrix.length;
+					this._uploadMatrix[$uploadID] = [];
 					
 					for (var $i = 0, $length = files.length; $i < $length; $i++) {
 						var $file = files[$i];
-						var $li = self._initFile($file);
+						var $li = this._initFile($file);
 						
 						if (!$li.hasClass('uploadFailed')) {
-							$li.data('filename', $file.name).data('internalFileID', self._internalFileID++);
-							self._uploadMatrix[$uploadID][$i] = $li;
+							$li.data('filename', $file.name).data('internalFileID', this._internalFileID++);
+							this._uploadMatrix[$uploadID][$i] = $li;
 						}
 					}
 					
@@ -6105,19 +6103,18 @@ if (COMPILER_TARGET_DEFAULT) {
 				}
 				
 				return null;
-				
+			}).bind(this);
+			
+			if (!(files instanceof Promise)) {
+				files = Promise.resolve(files);
 			}
 			
-			if (files instanceof Promise) {
-				return files.then(function (files) {
-					return {
-						files: files,
-						uploadID: updateMatrix(files)
-					};
-				});
-			}
-			
-			return updateMatrix(files);
+			return files.then(function (files) {
+				return {
+					files: files,
+					uploadID: updateMatrix(files)
+				};
+			});
 		},
 		
 		/**

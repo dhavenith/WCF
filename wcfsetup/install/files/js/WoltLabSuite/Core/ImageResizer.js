@@ -10,10 +10,7 @@ define([], function() {
 	/**
 	 * @constructor
 	 */
-	function ImageResizer() {
-		this.canvas = document.createElement('canvas');
-		this.ctx = this.canvas.getContext('2d');
-	}
+	function ImageResizer() { }
 	
 	ImageResizer.prototype = {
 		maxWidth: 800,
@@ -68,75 +65,80 @@ define([], function() {
 					ext = blob.type.split('/')[1];
 			}
 			
-			return new File([blob], name.split(/(.+)(\..+?)$/)[1] + "_autoscaled" + ext);
+			return new File([blob], name.match(/(.+)(\..+?)$/)[1] + "_autoscaled" + ext);
 		},
 		
-		getFile: function (fileName) {
-			var self = this;
-			
-			return this.getBlob().then(function (blob) {
-				return self.blobToFile(blob, fileName);
-			});
+		getFile: function (canvas, fileName, fileType, quality) {
+			return this.getBlob(canvas, fileType, quality).then((function (blob) {
+				return this.blobToFile(blob, fileName);
+			}).bind(this));
 		},
 		
-		getBlob: function () {
-			var self = this;
+		getBlob: function (canvas, fileType, quality) {
+			fileType = fileType || this.fileType;
+			quality = quality || this.quality;
 			
 			return new Promise(function (resolve, reject) {
 				// Create a new image blob
-				try {
-					if (HTMLCanvasElement.prototype.toBlob) {
-						self.canvas.toBlob(resolve, self.fileType, self.quality);
-					}
-					else {
-						// Fallback for browsers like Edge that do not implement toBlob()
-						var binary = atob(self.canvas.toDataURL(self.fileType, self.quality).split(',')[1]);
-						var length = binary.length;
-						var data = new Uint8Array(length);
-						
-						for (var i = 0; i < length; i++) {
-							data[i] = binary.charCodeAt(i);
-						}
-						
-						resolve(new Blob([data], {type: self.fileType}));
-					}
+				if (typeof canvas.toBlob === 'function') {
+					canvas.toBlob(resolve, fileType, quality);
 				}
-				catch (error) {
-					reject(error);
+				else {
+					// Fallback for browsers like Edge that do not implement toBlob()
+					var binary = atob(canvas.toDataURL(fileType, quality).split(',')[1]);
+					var length = binary.length;
+					var data = new Uint8Array(length);
+					
+					for (var i = 0; i < length; i++) {
+						data[i] = binary.charCodeAt(i);
+					}
+					
+					resolve(new Blob([data], {type: fileType}));
 				}
 			});
 		},
 		
-		getImageTag: function () {
-			var dataURL = this.canvas.toDataURL(this.fileType, this.quality);
+		getImageTag: function (canvas, fileType, quality) {
+			fileType = fileType || this.fileType;
+			quality = quality || this.quality;
+			
+			var dataURL = canvas.toDataURL(fileType, quality);
 			var image = new Image();
 			image.src = dataURL;
 			
 			return image;
 		},
 		
-		resize: function (image) {
-			var self = this;
+		resize: function (image, maxWidth, maxHeight) {
+			maxWidth = maxWidth || this.maxWidth;
+			maxHeight = maxHeight || this.maxHeight;
+			
+			var canvas = document.createElement('canvas');
+			var ctx = canvas.getContext('2d');
+			
+			// Prevent upscalingq
+			var newWidth = Math.min(maxWidth, image.width);
+			var newHeight = Math.min(maxHeight, image.height);
+			
+			// Keep image ratio
+			if (image.width >= image.height) {
+				canvas.width = newWidth;
+				canvas.height = newWidth * (image.height / image.width);
+			}
+			else {
+				canvas.width = newHeight * (image.width / image.height);
+				canvas.height = newHeight;
+			}
 			
 			// We return a Promise, to aid supporting asynchronous resizing later on
 			return new Promise(function (resolve) {
 				// TODO: If possible, resize the image in a WebWorker, otherwise the UI thread may be blocked for larger images
 				
-				// Keep image ratio
-				if (image.width >= image.height) {
-					self.canvas.width = self.maxWidth;
-					self.canvas.height = self.maxWidth * (image.height / image.width);
-				}
-				else {
-					self.canvas.width = self.maxHeight * (image.width / image.height);
-					self.canvas.height = self.maxHeight;
-				}
-				
 				// Scale the image down
 				// TODO: Evaluate if a custom downsampling algorithm like Hermite downsampling should be implemented
-				self.ctx.drawImage(image, 0, 0, self.canvas.width, self.canvas.height);
+				ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
 				
-				resolve()
+				resolve(canvas);
 			});
 		}
 	};

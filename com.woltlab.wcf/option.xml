@@ -1055,9 +1055,7 @@ redis:cache_source_redis_host,!cache_source_memcached_host</enableoptions>
 				<optiontype>radioButton</optiontype>
 				<defaultvalue>image/jpeg</defaultvalue>
 				<selectoptions>image/jpeg:wcf.acp.option.attachment_image_autoscale_file_type.jpeg
-image/png:wcf.acp.option.attachment_image_autoscale_file_type.png</selectoptions>
-				<enableoptions>image/png:!attachment_image_autoscale_quality
-image/jpeg:attachment_image_autoscale_quality</enableoptions>
+keep:wcf.acp.option.attachment_image_autoscale_file_type.keep</selectoptions>
 			</option>
 			<option name="attachment_image_autoscale_quality">
 				<categoryname>message.attachment.autoscale</categoryname>
