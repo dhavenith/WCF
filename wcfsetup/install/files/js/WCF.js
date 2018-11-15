@@ -6009,15 +6009,27 @@ if (COMPILER_TARGET_DEFAULT) {
 				var $fd = new FormData();
 				$uploadID = this._createUploadMatrix($files);
 				
-				var doUpload = function ($uploadID, files, ignoreBlob) {
+				// if we get a Promise we know that the list of files has been
+				// changed and blobs have been converted to files
+				var ignoreBlob = $uploadID instanceof Promise
+				
+				if (!ignoreBlob) {
+					$uploadID = Promise.resolve({ data: { uploadID: $uploadID, filed: $files } });
+				}
+				
+				// if a Promise was given, the file set may have been updated
+				$uploadID = $uploadID.then(function (data) {
+					var uploadID = data.uploadID;
+					var files = data.files;
+					
 					// no more files left, abort
-					if (!self._uploadMatrix[$uploadID].length) {
+					if (!self._uploadMatrix[uploadID].length) {
 						return null;
 					}
 					
 					for (var $i = 0, $length = files.length; $i < $length; $i++) {
-						if (self._uploadMatrix[$uploadID][$i]) {
-							var $li = self._uploadMatrix[$uploadID][$i];;
+						if (self._uploadMatrix[uploadID][$i]) {
+							var $li = self._uploadMatrix[uploadID][$i];;
 							var $file = files[$i];
 							var $internalFileID = $li.data('internalFileID');
 							
@@ -6045,14 +6057,16 @@ if (COMPILER_TARGET_DEFAULT) {
 						contentType: false,
 						processData: false,
 						success: function (data, textStatus, jqXHR) {
-							self._success($uploadID, data);
+							$uploadID.then(function (uploadID) {
+								self._success(uploadID, data);
+							});
 						},
 						error: $.proxy(self._error, self),
 						xhr: function () {
 							var $xhr = $.ajaxSettings.xhr();
 							if ($xhr) {
 								$xhr.upload.addEventListener('progress', function (event) {
-									self._progress($uploadID, event);
+									self._progress(uploadID, event);
 								}, false);
 							}
 							return $xhr;
@@ -6061,17 +6075,9 @@ if (COMPILER_TARGET_DEFAULT) {
 							withCredentials: true
 						}
 					});
-				};
-				
-				if ($uploadID instanceof Promise) {
-					// if a Promise was given, the file set may have been updated
-					$uploadID.then(function (data) {
-						doUpload(data.uploadID, data.files, true);
-					});
-				}
-				else {
-					doUpload($uploadID, $files);
-				}
+					
+					return uploadID;
+				});
 			}
 			
 			return $uploadID;

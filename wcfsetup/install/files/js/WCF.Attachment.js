@@ -172,7 +172,6 @@ if (COMPILER_TARGET_DEFAULT) {
 			// show tab
 			this._fileListSelector.closest('.messageTabMenu').messageTabMenu('showTab', 'attachments', true);
 			
-			// TODO: $uploadID might be a Promise
 			
 			if (data.file) {
 				$uploadID = this._upload(undefined, data.file);
@@ -182,14 +181,27 @@ if (COMPILER_TARGET_DEFAULT) {
 				replace = data.replace || null;
 			}
 			
-			if (replace === null) {
-				this._autoInsert.push($uploadID);
-			}
-			else {
-				this._replaceOnLoad[$uploadID] = replace;
+			// Set the uploadID as early as possible in the synchronous case.
+			// In the asynchronous case this will be a Promise!
+			data.uploadID = $uploadID;
+			
+			if (!($uploadID instanceof Promise)) {
+				$uploadID = Promise.resolve($uploadID);
 			}
 			
-			data.uploadID = $uploadID;
+			$uploadID.then(function ($uploadID) {
+				// _autoInsert and _replaceOnLoad are being used in _success().
+				// _success() is called after $uploadID has been resolved.
+				if (replace === null) {
+					this._autoInsert.push($uploadID);
+				}
+				else {
+					this._replaceOnLoad[$uploadID] = replace;
+				}
+				
+				// Update the data with the resolved uploadID
+				data.uploadID = $uploadID;
+			})
 		},
 		
 		/**
