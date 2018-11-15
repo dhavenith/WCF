@@ -1047,7 +1047,7 @@ redis:cache_source_redis_host,!cache_source_memcached_host</enableoptions>
 			<option name="attachment_image_autoscale_max_height">
 				<categoryname>message.attachment.autoscale</categoryname>
 				<optiontype>integer</optiontype>
-				<defaultvalue>576</defaultvalue>
+				<defaultvalue>1024</defaultvalue>
 				<minvalue>1</minvalue>
 			</option>
 			<option name="attachment_image_autoscale_file_type">
