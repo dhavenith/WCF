@@ -335,7 +335,6 @@ if (COMPILER_TARGET_DEFAULT) {
 				var promise = require(['ImageResizer'])
 					.then((function (modules) {
 						var ImageResizer = modules[0];
-						
 						var promises = [];
 						
 						// Create an ImageResizer instance
@@ -352,6 +351,7 @@ if (COMPILER_TARGET_DEFAULT) {
 							if (files[i].type.match(/^image\//i)) {
 								promises.push(new Promise((function (resolve) {
 									var file = files[i];
+									var oldSize = file.size;
 									
 									if (file.blob) {
 										var name = file.name;
@@ -384,7 +384,15 @@ if (COMPILER_TARGET_DEFAULT) {
 														fileType = file.type;
 													}
 													
-													return resizer.getFile(canvas, file.name, fileType);
+													return resizer.getFile(canvas, file.name, fileType)
+														.then(function (resizedFile) {
+															if (resizedFile.size > oldSize) {
+																console.debug('[WCF.Attachment] File size increased, uploading untouched image.')
+																return file;
+															}
+															
+															return resizedFile;
+														})
 												}).bind(this))
 												.catch(function (error) {
 													// In case of an error return the original file
